@@ -99,6 +99,73 @@ button {
   padding: 30px 0 28px;
 }
 
+.cigarette-transition-screen {
+  display: grid;
+  min-height: calc(100vh - 148px);
+  place-items: center;
+  padding: 32px 0;
+}
+
+.transition-card {
+  width: min(720px, 100%);
+  padding: clamp(28px, 5vw, 54px);
+  border: 1px solid rgba(232, 161, 98, 0.26);
+  border-radius: 20px;
+  background:
+    radial-gradient(ellipse at 85% 15%, rgba(166, 84, 48, 0.2), transparent 42%),
+    linear-gradient(145deg, #1d292b, #151f22);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.24);
+}
+
+.transition-card .eyebrow {
+  color: #e6a66f;
+}
+
+.transition-card h1 {
+  margin-bottom: 14px;
+}
+
+.transition-card > p:not(.eyebrow) {
+  max-width: 560px;
+  color: #a7b3ad;
+  font-size: 13px;
+  line-height: 1.8;
+}
+
+.transition-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 20px;
+  padding: 18px 0 4px;
+  color: #c4cec6;
+  font-size: 11px;
+}
+
+.transition-controls kbd {
+  margin-right: 5px;
+  color: #f0c092;
+}
+
+.transition-card .start-button {
+  max-width: 320px;
+  margin: 24px 0 0;
+}
+
+.cigarette-screen .game-heading {
+  padding: 16px 18px 19px;
+  border-left: 2px solid rgba(232, 161, 98, 0.75);
+  border-radius: 3px 11px 11px 3px;
+  background: linear-gradient(90deg, rgba(167, 87, 47, 0.12), transparent 80%);
+}
+
+.cigarette-screen .eyebrow {
+  color: #d6a277;
+}
+
+.cigarette-screen .scene-wrap {
+  border-color: rgba(232, 161, 98, 0.28);
+}
+
 [hidden] {
   display: none !important;
 }
@@ -709,6 +776,11 @@ kbd {
   .start-screen {
     gap: 20px;
     padding: 32px 0;
+  }
+
+  .cigarette-transition-screen {
+    min-height: auto;
+    padding: 28px 0;
   }
 
   .start-controls {

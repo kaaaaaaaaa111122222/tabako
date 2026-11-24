@@ -17,8 +17,8 @@
         }
       }
     </script>
-    <script type="module" crossorigin src="/assets/index-uJViV23O.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-B-kZFrU1.css">
+    <script type="module" crossorigin src="/assets/index-DdyfaLyX.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-DSCmiKp9.css">
   </head>
   <body>
     <main class="game-shell">
@@ -46,16 +46,16 @@
           </div>
           <ol class="control-list">
             <li><span class="control-number">01</span><span class="keycap">SPACE</span><span>机のライターを手に取る</span></li>
-            <li><span class="control-number">02</span><span class="keycap">B</span><span>点火する（またはホイールをドラッグ）</span></li>
+            <li><span class="control-number">02</span><span class="keycap">B</span><span>右手でライター上部のスイッチを押す</span></li>
             <li><span class="control-number">03</span><span class="keycap">WASD</span><span>ライターを動かす</span></li>
-            <li><span class="control-number">04</span><span class="keycap arrow-keys">↑↓←→</span><span>右手で風をよける</span></li>
+            <li><span class="control-number">04</span><span class="keycap arrow-keys">↑↓←→</span><span>右手を動かして風よけ・スイッチ操作</span></li>
             <li><span class="control-number">05</span><span class="keycap">SHIFT</span><span>マウスで動かす手を切り替え</span></li>
             <li><span class="control-number">06</span><span class="keycap mouse-key"><i></i></span><span>マウスでも手を動かせる</span></li>
             <li><span class="control-number">07</span><span class="keycap">E 長押し</span><span>煙草を吸って火を定着させる</span></li>
           </ol>
           <div class="tip-box">
             <span class="tip-symbol">✳</span>
-            <p>一人称視点で右手だけが見えます。WASDでライター、矢印キーで風よけを動かし、炎を近づけてEキー長押しで吸うと着火が定着します。</p>
+            <p>ライターの上部をクリックして右手を合わせ、Bキーでスイッチを押します。煙草の着火は別画面で行います。</p>
           </div>
           <button id="start-button" class="start-button" type="button">
             <span>ゲームスタート</span><span class="button-arrow">↗</span>
@@ -108,6 +108,40 @@
             <p class="goal-copy">口元の煙草に火がつくまでのタイムを競います。</p>
             <button id="replay-button" class="replay-button" type="button" hidden>もう一度プレイ</button>
           </div>
+          <p class="restart-hint">いつでも <kbd>R</kbd> でスタート画面へ</p>
+        </div>
+      </section>
+
+      <section id="cigarette-transition-screen" class="cigarette-transition-screen" aria-label="煙草着火ステージへの移行" hidden>
+        <div class="transition-card">
+          <p class="eyebrow">STAGE 02 / CIGARETTE</p>
+          <h1>ライターに火がついた。</h1>
+          <p>次の画面で、火を煙草の先端まで運びます。近づけて風を防ぎ、Eキーを長押しして吸い込むと着火が定着します。</p>
+          <div class="transition-controls">
+            <span><kbd>WASD</kbd> ライターを動かす</span>
+            <span><kbd>矢印</kbd> 風よけを動かす</span>
+            <span><kbd>ホイール</kbd> 奥行きを調整</span>
+          </div>
+          <button id="continue-cigarette-button" class="start-button" type="button">
+            <span>煙草に火を移す</span><span class="button-arrow">↗</span>
+          </button>
+        </div>
+      </section>
+
+      <section id="cigarette-screen" class="game-layout cigarette-screen" aria-label="煙草に着火" hidden>
+        <div class="game-column">
+          <div class="game-heading">
+            <div>
+              <p class="eyebrow">LIGHT THE CIGARETTE</p>
+              <h1>煙草に火を移す</h1>
+              <p class="heading-copy">WASDとマウスホイールで炎を先端へ近づけ、Eキーを長押しして吸い込もう。</p>
+            </div>
+            <div class="timer-card" aria-live="polite">
+              <span class="timer-label">TIME</span>
+              <strong id="cigarette-timer">00.00</strong>
+            </div>
+          </div>
+          <div id="cigarette-stage-content"></div>
           <p class="restart-hint">いつでも <kbd>R</kbd> でスタート画面へ</p>
         </div>
       </section>

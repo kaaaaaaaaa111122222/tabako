@@ -3,6 +3,14 @@ import * as THREE from "three";
 const mount = document.querySelector("#scene");
 const startScreen = document.querySelector("#start-screen");
 const gameLayout = document.querySelector("#game-layout");
+const cigaretteTransitionScreen = document.querySelector("#cigarette-transition-screen");
+const cigaretteScreen = document.querySelector("#cigarette-screen");
+const cigaretteStageContent = document.querySelector("#cigarette-stage-content");
+const cigaretteTimerElement = document.querySelector("#cigarette-timer");
+const gameColumn = gameLayout.querySelector(".game-column");
+const gameSceneWrap = mount.parentElement;
+const underScene = gameLayout.querySelector(".under-scene");
+const restartHint = gameLayout.querySelector(".restart-hint");
 const timerElement = document.querySelector("#timer");
 const bestElement = document.querySelector("#best-time");
 const phaseElement = document.querySelector("#phase-label");
@@ -16,6 +24,7 @@ const statusElement = document.querySelector("#run-status");
 const statusWrap = statusElement.parentElement;
 const windSpeedElement = document.querySelector("#wind-speed");
 const startButton = document.querySelector("#start-button");
+const continueCigaretteButton = document.querySelector("#continue-cigarette-button");
 const replayButton = document.querySelector("#replay-button");
 const steps = [
   document.querySelector("#step-1"),
@@ -156,8 +165,15 @@ const wheel = new THREE.Mesh(
 wheel.rotation.x = Math.PI / 2;
 wheel.position.set(0.03, 0.5, 0.04);
 lighter.add(wheel);
+const lighterSwitch = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.045, 0.055, 0.07, 16),
+  material("#bf7253", 0.38, 0.25),
+);
+lighterSwitch.position.set(0.13, 0.51, 0.045);
+lighter.add(lighterSwitch);
+const lighterSwitchRestY = lighterSwitch.position.y;
 const ignitionHitbox = new THREE.Mesh(
-  new THREE.BoxGeometry(0.65, 0.95, 0.4),
+  new THREE.BoxGeometry(1, 1.2, 0.55),
   new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false }),
 );
 lighter.add(ignitionHitbox);
@@ -249,8 +265,6 @@ const state = {
   cigaretteLit: false,
   cigaretteSmoldering: false,
   inhaling: false,
-  draggingIgnition: false,
-  ignitionDragStartY: 0,
 };
 
 const pressedKeys = new Set();
@@ -259,18 +273,32 @@ const cigaretteTipWorld = new THREE.Vector3();
 const lighterTremor = new THREE.Vector3();
 const pointerNdc = new THREE.Vector2();
 const raycaster = new THREE.Raycaster();
+const lighterSwitchWorldPosition = new THREE.Vector3();
+const switchHandTarget = new THREE.Vector3();
+const switchHandOffset = new THREE.Vector3(-0.13, -0.04, -0.03);
 let bestTime = Number(localStorage.getItem("windproof-best") || 0);
 bestElement.textContent = bestTime ? bestTime.toFixed(2) : "--.--";
 resizeRenderer();
 window.addEventListener("resize", resizeRenderer);
 mount.addEventListener("pointermove", onPointerMove);
 mount.addEventListener("pointerdown", onPointerDown);
-mount.addEventListener("pointerup", onPointerUp);
-mount.addEventListener("pointercancel", onPointerUp);
+mount.addEventListener("wheel", onWheel, { passive: false });
 startButton.addEventListener("click", startGame);
+continueCigaretteButton.addEventListener("click", startCigaretteStage);
 replayButton.addEventListener("click", startGame);
 window.addEventListener("keydown", onKeyDown);
 window.addEventListener("keyup", onKeyUp);
+
+function getSwitchHandTarget() {
+  lighter.updateMatrixWorld(true);
+  lighterSwitch.getWorldPosition(lighterSwitchWorldPosition);
+  return switchHandTarget.copy(lighterSwitchWorldPosition).add(switchHandOffset);
+}
+
+function aimHandAtLighterSwitch() {
+  state.shieldTarget.copy(getSwitchHandTarget());
+  setHandPose(shieldHand, "press");
+}
 
 function onPointerDown(event) {
   if (state.phase !== "caught" || event.button !== 0) return;
@@ -283,20 +311,10 @@ function onPointerDown(event) {
   lighter.updateMatrixWorld(true);
   if (raycaster.intersectObject(ignitionHitbox, false).length === 0) return;
 
-  state.draggingIgnition = true;
-  state.ignitionDragStartY = event.clientY;
-  renderer.domElement.setPointerCapture(event.pointerId);
+  aimHandAtLighterSwitch();
   event.preventDefault();
-  setPhaseLabel("FLICK THE WHEEL");
-  showMessage("LIGHTER IGNITION", "ホイールを下へドラッグ", "長めに下へ引いて火をつけよう。Bキーでも点火できます。");
-}
-
-function onPointerUp() {
-  if (!state.draggingIgnition) return;
-  state.draggingIgnition = false;
-  wheel.rotation.z = 0;
-  setPhaseLabel("LIGHTER");
-  showMessage("LIGHTER IGNITION", "もう一度ホイールを引こう。", "ライターの上をクリックし、マウスを下へドラッグ。");
+  setPhaseLabel("PRESS SWITCH");
+  showMessage("LIGHTER IGNITION", "右手をスイッチに合わせた。", "手がスイッチに届いたらBキーで押して着火。");
 }
 
 function makeHand() {
@@ -436,6 +454,19 @@ function setHandPose(group, pose) {
     sleeve.position.set(0, -0.48, -0.015);
     group.userData.poseRotationZ = Math.PI / 2;
     group.rotation.z = group.userData.poseRotationZ;
+  } else if (pose === "press") {
+    fingers.forEach((finger, index) => {
+      finger.position.set(-0.15 + index * 0.095, 0.13, 0.075);
+      finger.rotation.set(0.35, 0, -0.35 + index * 0.03);
+      finger.userData.joints[0].rotation.x = 0.3;
+      finger.userData.joints[1].rotation.x = 0.2;
+    });
+    thumb.position.set(0.25, 0.12, 0.09);
+    thumb.rotation.set(Math.PI / 2, 0, -0.45);
+    thumb.userData.joints[0].rotation.x = -0.35;
+    thumb.userData.joints[1].rotation.x = -0.25;
+    sleeve.rotation.z = -0.08;
+    sleeve.position.set(0, -0.48, -0.015);
   }
 }
 
@@ -448,17 +479,52 @@ function resizeRenderer() {
   camera.updateProjectionMatrix();
 }
 
+function showCigaretteScreen() {
+  cigaretteStageContent.append(gameSceneWrap, underScene);
+  gameLayout.hidden = true;
+  cigaretteTransitionScreen.hidden = true;
+  cigaretteScreen.hidden = false;
+  resizeRenderer();
+}
+
+function showCigaretteTransition() {
+  gameLayout.hidden = true;
+  cigaretteScreen.hidden = true;
+  cigaretteTransitionScreen.hidden = false;
+}
+
+function showLighterScreen() {
+  if (gameSceneWrap.parentElement === cigaretteStageContent) {
+    gameColumn.insertBefore(underScene, restartHint);
+    gameColumn.insertBefore(gameSceneWrap, underScene);
+  }
+  cigaretteTransitionScreen.hidden = true;
+  cigaretteScreen.hidden = true;
+  gameLayout.hidden = false;
+  resizeRenderer();
+}
+
+function startCigaretteStage() {
+  if (state.phase !== "handoff") return;
+  state.phase = "shield";
+  state.runStartedAt = performance.now() - state.elapsed * 1000;
+  statusElement.textContent = "炎を煙草の先端へ近づけよう";
+  setPhaseLabel("PROTECT THE FLAME");
+  showCigaretteScreen();
+}
+
+function onWheel(event) {
+  if (state.phase !== "caught" && state.phase !== "shield") return;
+  event.preventDefault();
+  const depthChange = event.deltaY * 0.003;
+  state.lighterTarget.z = THREE.MathUtils.clamp(state.lighterTarget.z + depthChange, 6.2, 7.8);
+  if (state.phase === "shield") {
+    state.shieldTarget.z = THREE.MathUtils.clamp(state.shieldTarget.z + depthChange, 6.2, 7.8);
+  }
+}
+
 function onPointerMove(event) {
   if (state.phase !== "caught" && state.phase !== "shield") return;
-  if (state.draggingIgnition) {
-    const dragDistance = Math.max(0, event.clientY - state.ignitionDragStartY);
-    wheel.rotation.z = Math.min(Math.PI * 2, dragDistance * 0.06);
-    if (dragDistance >= 48) {
-      ignite();
-      return;
-    }
-    return;
-  }
   const rect = mount.getBoundingClientRect();
   const movementScale = 2.4 / Math.max(1, rect.height);
   if (state.phase === "caught" || state.activeHand === "shield") {
@@ -506,7 +572,7 @@ function onKeyDown(event) {
     return;
   }
   if (event.code === "KeyB") {
-    ignite();
+    pressLighterSwitch();
     return;
   }
   if (event.code === "KeyE") {
@@ -562,8 +628,8 @@ function updateKeyboardHands(delta) {
 
 function startGame() {
   if (state.phase !== "ready" && state.phase !== "success" && state.phase !== "failed") return;
+  showLighterScreen();
   startScreen.hidden = true;
-  gameLayout.hidden = false;
   replayButton.hidden = true;
   resizeRenderer();
   resetScene();
@@ -582,15 +648,16 @@ function resetScene() {
   state.cigaretteLit = false;
   state.cigaretteSmoldering = false;
   state.inhaling = false;
-  state.draggingIgnition = false;
   cigaretteEmberLight.intensity = 0;
   cigaretteEmber.visible = false;
   state.lighterTarget.set(-0.48, 1, 6.65);
   state.shieldTarget.set(0.15, 1.05, 6.65);
+  lighter.scale.setScalar(1);
   lighter.position.copy(lighterDeskPosition);
   lighterTremor.set(0, 0, 0);
   lighter.rotation.set(0, 0, 0);
   wheel.rotation.z = 0;
+  lighterSwitch.position.y = lighterSwitchRestY;
   flame.visible = false;
   flameCore.visible = false;
   flameGlow.intensity = 0;
@@ -615,12 +682,15 @@ function resetScene() {
     step.classList.remove("done");
   });
   timerElement.textContent = "00.00";
+  cigaretteTimerElement.textContent = "00.00";
 }
 
 function resetToReady() {
   state.phase = "ready";
+  showLighterScreen();
   gameLayout.hidden = true;
   startScreen.hidden = false;
+  cigaretteScreen.hidden = true;
   replayButton.hidden = true;
   resetScene();
   statusElement.textContent = "待機中";
@@ -639,28 +709,42 @@ function attemptCatch() {
   state.activeHand = "shield";
   state.lighterTarget.set(-0.48, 1, 6.65);
   state.shieldTarget.set(0.15, 1.05, 6.65);
+  lighter.position.copy(state.lighterTarget);
   setHandPose(hand, "grip");
+  setHandPose(shieldHand, "fan");
+  lighterSwitch.position.y = lighterSwitchRestY;
   lighter.scale.setScalar(0.36);
   setStep(0);
   setActiveHand();
   setPhaseLabel("LIGHTER");
-  showMessage("LIGHTER IGNITION", "ライターに火をつけよう。", "ホイールをマウスで下へドラッグ。Bキーでも点火できます。");
-  statusElement.textContent = "ライターの点火待ち";
+  showMessage("LIGHTER IGNITION", "右手でスイッチを押そう。", "ライターをクリックして右手を上部スイッチへ移動し、Bキーで押す。");
+  statusElement.textContent = "右手をスイッチへ";
 }
 
-function ignite() {
+function pressLighterSwitch() {
   if (state.phase !== "caught") return;
-  state.draggingIgnition = false;
-  const isShielding = isFlameShielded();
+  const handDistance = shieldHand.position.distanceTo(getSwitchHandTarget());
+  statusElement.textContent = `スイッチまでの距離: ${handDistance.toFixed(2)}`;
+  if (handDistance > 0.38) {
+    return;
+  }
+  setHandPose(shieldHand, "press");
+  lighterSwitch.position.y = lighterSwitchRestY - 0.025;
+  ignite(true);
+  if (state.phase === "caught") lighterSwitch.position.y = lighterSwitchRestY;
+}
+
+function ignite(isShielding) {
+  if (state.phase !== "caught") return;
   const effectiveWind = state.windStrength * (isShielding ? 0.2 : 1);
   if (effectiveWind > 0.68) {
-    wheel.rotation.z = 0;
-    showMessage("WIND TOO STRONG", "風で火がつかない。", "反対の手で覆ってからホイールをドラッグするか、Bキーを押そう。");
+    lighterSwitch.position.y = lighterSwitchRestY;
+    showMessage("WIND TOO STRONG", "風で火がつかない。", "右手でスイッチを押さえながら、もう一度Bキーを押そう。");
     statusElement.textContent = "風よけ・点火待ち";
     return;
   }
   clearLighterTremor();
-  state.phase = "shield";
+  state.phase = "handoff";
   state.litAt = performance.now();
   state.elapsed = (state.litAt - state.runStartedAt) / 1000;
   state.activeHand = "shield";
@@ -673,15 +757,17 @@ function ignite() {
     state.lighterTarget.y - 0.03,
     state.lighterTarget.z + 0.02,
   );
+  state.shieldTarget.set(0.15, 1.05, state.lighterTarget.z);
+  setHandPose(shieldHand, "fan");
   flame.visible = true;
   flameCore.visible = true;
   flameGlow.intensity = 1.8;
   setActiveHand();
   setStep(1);
-  setPhaseLabel("PROTECT THE FLAME");
-  statusElement.textContent = "風よけ中";
+  setPhaseLabel("LIGHTER LIT");
+  statusElement.textContent = "煙草の着火画面へ進もう";
   hideMessage();
-  updateFlameMeter();
+  showCigaretteTransition();
 }
 
 function switchHand() {
@@ -706,6 +792,8 @@ function updateShield(delta) {
   state.elapsed = (performance.now() - state.runStartedAt) / 1000;
   state.lighterTarget.x = THREE.MathUtils.clamp(state.lighterTarget.x, -0.85, 0.85);
   state.lighterTarget.y = THREE.MathUtils.clamp(state.lighterTarget.y, 0.65, 1.65);
+  state.lighterTarget.z = THREE.MathUtils.clamp(state.lighterTarget.z, 6.2, 7.8);
+  state.shieldTarget.z = THREE.MathUtils.clamp(state.shieldTarget.z, 6.2, 7.8);
   lighter.position.lerp(state.lighterTarget, Math.min(1, delta * 8));
 
   const shieldDestination = new THREE.Vector3(
@@ -731,7 +819,7 @@ function updateShield(delta) {
   cigTip.getWorldPosition(cigaretteTipWorld);
   const targetDistance = targetFlameTip.distanceTo(cigaretteTipWorld);
   const isShielding = isFlameShielded();
-  const inLightingRange = targetDistance < 0.75;
+  const inLightingRange = targetDistance < 0.16;
   state.cigaretteSmoldering = inLightingRange;
   const exposed = isShielding ? 0.15 : 0.55 + state.windStrength * 0.55;
 
@@ -750,7 +838,7 @@ function updateShield(delta) {
     setPhaseLabel("PROTECT THE FLAME");
     statusElement.textContent = state.cigaretteSmoldering
       ? "先端が燃焼中・Eキー長押しで吸う"
-      : "風よけ中・煙草に炎を近づけよう";
+      : `風よけ中・煙草に炎を近づけよう（距離 ${targetDistance.toFixed(2)}）`;
   }
 
   const stability = state.stability;
@@ -931,6 +1019,8 @@ function animate() {
     );
     shieldHand.position.lerp(state.shieldTarget, Math.min(1, delta * 9));
     applyAddictionTremor();
+  } else if (state.phase === "handoff") {
+    shieldHand.position.lerp(state.shieldTarget, Math.min(1, delta * 9));
   } else if (state.phase === "success") {
     updateSmoke(delta);
   } else if (state.phase === "failed") {
@@ -938,7 +1028,9 @@ function animate() {
   }
 
   if (state.phase === "caught" || state.phase === "shield" || state.phase === "success") {
-    timerElement.textContent = state.elapsed.toFixed(2).padStart(5, "0");
+    const timerText = state.elapsed.toFixed(2).padStart(5, "0");
+    timerElement.textContent = timerText;
+    cigaretteTimerElement.textContent = timerText;
   }
 
   state.windPhase += delta;
