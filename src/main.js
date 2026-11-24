@@ -35,6 +35,7 @@ const steps = [
 const scene = new THREE.Scene();
 scene.background = new THREE.Color("#344949");
 scene.fog = new THREE.Fog("#344949", 10, 23);
+const lightingDurationMs = 900;
 
 const camera = new THREE.PerspectiveCamera(48, 1, 0.1, 50);
 camera.position.set(0, 1.4, 8.2);
@@ -253,6 +254,7 @@ const state = {
   elapsed: 0,
   caughtAt: 0,
   litAt: 0,
+  transitionShown: false,
   lastFrameAt: 0,
   activeHand: "lighter",
   lighterTarget: new THREE.Vector3(-0.48, 1, 6.65),
@@ -659,7 +661,9 @@ function resetScene() {
   wheel.rotation.z = 0;
   lighterSwitch.position.y = lighterSwitchRestY;
   flame.visible = false;
+  flame.scale.setScalar(1);
   flameCore.visible = false;
+  flameCore.scale.setScalar(1);
   flameGlow.intensity = 0;
   flameMaterial.color.set("#ffbd62");
   flameMaterial.opacity = 0.95;
@@ -746,6 +750,7 @@ function ignite(isShielding) {
   clearLighterTremor();
   state.phase = "handoff";
   state.litAt = performance.now();
+  state.transitionShown = false;
   state.elapsed = (state.litAt - state.runStartedAt) / 1000;
   state.activeHand = "shield";
   state.stability = isShielding ? 0.92 : 0.68;
@@ -761,13 +766,14 @@ function ignite(isShielding) {
   setHandPose(shieldHand, "fan");
   flame.visible = true;
   flameCore.visible = true;
-  flameGlow.intensity = 1.8;
+  flame.scale.setScalar(0.2);
+  flameCore.scale.setScalar(0.2);
+  flameGlow.intensity = 0.45;
   setActiveHand();
   setStep(1);
-  setPhaseLabel("LIGHTER LIT");
+  setPhaseLabel("IGNITING");
   statusElement.textContent = "煙草の着火画面へ進もう";
   hideMessage();
-  showCigaretteTransition();
 }
 
 function switchHand() {
@@ -1021,6 +1027,20 @@ function animate() {
     applyAddictionTremor();
   } else if (state.phase === "handoff") {
     shieldHand.position.lerp(state.shieldTarget, Math.min(1, delta * 9));
+    const progress = THREE.MathUtils.clamp((now - state.litAt) / lightingDurationMs, 0, 1);
+    const growthProgress = Math.min(progress / 0.8, 1);
+    const flareScale = 0.2 + 1.3 * growthProgress * (2 - growthProgress);
+    const flameScale = progress < 0.8
+      ? flareScale
+      : THREE.MathUtils.lerp(1.5, 1, (progress - 0.8) / 0.2);
+    flame.scale.setScalar(flameScale);
+    flameCore.scale.setScalar(flameScale);
+    flameGlow.intensity = THREE.MathUtils.lerp(0.45, 1.8, progress);
+    if (progress === 1 && !state.transitionShown) {
+      state.transitionShown = true;
+      setPhaseLabel("LIGHTER LIT");
+      showCigaretteTransition();
+    }
   } else if (state.phase === "success") {
     updateSmoke(delta);
   } else if (state.phase === "failed") {
