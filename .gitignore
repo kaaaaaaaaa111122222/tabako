@@ -1,0 +1,3 @@
+dist/
+node_modules/
+tools/assetgen/__pycache__/*.pyc

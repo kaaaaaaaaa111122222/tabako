@@ -2,18 +2,23 @@
 <html lang="ja">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="theme-color" content="#101b20" />
     <meta
       name="description"
-      content="一人称視点で机上のライターを拾い、風から火を守って着火する3Dミニゲーム。"
+      content="ライターやマッチを指先で操って火をつけ、風やお邪魔イベントから火を守って煙草に着火する一人称3Dミニゲーム。"
     />
-    <link rel="stylesheet" href="/src/style.css" />
+    <link rel="stylesheet" href="./src/style.css" />
+    <link rel="icon" href="./src/assets/images/thumb_balcony.jpg" />
     <title>WINDPROOF — 火を守れ</title>
     <script type="importmap">
       {
         "imports": {
-          "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js"
+          "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
         }
       }
     </script>
@@ -25,123 +30,363 @@
           <span class="wordmark-mark">W</span>
           <span>WINDPROOF</span>
         </a>
-        <div class="topbar-note"><span class="live-dot"></span> 風速 <span id="wind-speed">12</span> km/h</div>
+        <button id="sound-toggle" class="sound-toggle" type="button" aria-pressed="true">
+          <span class="sound-dot" aria-hidden="true"></span>SOUND <b>ON</b>
+        </button>
       </header>
 
+      <!-- ============ タイトル画面 ============ -->
       <section id="start-screen" class="start-screen" aria-label="ゲーム開始">
         <div class="start-intro">
-          <p class="eyebrow">FIRST-PERSON WIND CHALLENGE</p>
+          <p class="eyebrow">FIRST-PERSON FLINT CHALLENGE</p>
           <h1>火を、守りきれ。</h1>
-          <p class="heading-copy">一人称視点でライターを手に取り、風から火を守って口元の煙草に着火しよう。</p>
+          <p class="heading-copy">ライターやマッチを指先で操り、風とお邪魔から炎を守って、口元の煙草に火をつける。</p>
         </div>
-        <section class="panel-card controls-card start-controls" aria-labelledby="controls-title">
-          <div class="panel-title-row">
-            <div>
-              <p class="eyebrow">HOW TO PLAY</p>
-              <h2 id="controls-title">操作方法</h2>
-            </div>
-            <span class="control-icon" aria-hidden="true">⌘</span>
-          </div>
-          <ol class="control-list">
-            <li><span class="control-number">01</span><span class="keycap">SPACE</span><span>机のライターを手に取る</span></li>
-            <li><span class="control-number">02</span><span class="keycap">B</span><span>右手でライター上部のスイッチを押す</span></li>
-            <li><span class="control-number">03</span><span class="keycap">WASD</span><span>ライターを動かす</span></li>
-            <li><span class="control-number">04</span><span class="keycap arrow-keys">↑↓←→</span><span>右手を動かして風よけ・スイッチ操作</span></li>
-            <li><span class="control-number">05</span><span class="keycap">SHIFT</span><span>マウスで動かす手を切り替え</span></li>
-            <li><span class="control-number">06</span><span class="keycap mouse-key"><i></i></span><span>マウスでも手を動かせる</span></li>
-            <li><span class="control-number">07</span><span class="keycap">E 長押し</span><span>煙草を吸って火を定着させる</span></li>
-          </ol>
-          <div class="tip-box">
-            <span class="tip-symbol">✳</span>
-            <p>ライターの上部をクリックして右手を合わせ、Bキーでスイッチを押します。煙草の着火は別画面で行います。</p>
-          </div>
-          <button id="start-button" class="start-button" type="button">
-            <span>ゲームスタート</span><span class="button-arrow">↗</span>
-          </button>
-          <p class="disclaimer">これは操作タイミングを楽しむフィクションのゲームです。</p>
+
+        <section id="mode-list" class="mode-select" aria-label="難易度を選ぶ"></section>
+
+        <section id="place-picker" class="place-picker" aria-labelledby="place-title" hidden>
+          <h2 id="place-title">どこで吸う？</h2>
+          <div id="place-list" class="place-list"></div>
         </section>
-      </section>
 
-      <section id="game-layout" class="game-layout" aria-label="ゲーム画面" hidden>
-        <div class="game-column">
-          <div class="game-heading">
-            <div>
-              <p class="eyebrow">FIRST-PERSON WIND CHALLENGE</p>
-              <h1>火を、守りきれ。</h1>
-            </div>
-            <div class="timer-card" aria-live="polite">
-              <span class="timer-label">TIME</span>
-              <strong id="timer">00.00</strong>
-            </div>
-          </div>
-
-          <div class="scene-wrap">
-            <div id="scene" class="scene" aria-label="Three.js のゲーム画面"></div>
-            <div class="scene-vignette" aria-hidden="true"></div>
-            <div class="scene-topline">
-              <span id="phase-label" class="phase-pill">READY</span>
-              <span class="run-status"><i></i> <span id="run-status">待機中</span></span>
-              <span class="scene-hint">BEST <b id="best-time">--.--</b></span>
-            </div>
-            <div id="message" class="scene-message" aria-live="polite">
-              <span class="message-kicker">READY?</span>
-              <strong>風に負けるな。</strong>
-              <span>準備ができたら、ゲームを始めよう。</span>
-            </div>
-            <div class="wind-meter">
-              <span class="wind-label">FLAME</span>
-              <div class="meter-track"><span id="flame-meter"></span></div>
-              <span id="flame-state">—</span>
-            </div>
-          </div>
-
-          <div class="under-scene">
-            <div class="progress-track" aria-label="ゲーム進行">
-              <span id="step-1" class="step-dot active">01 <b>拾う</b></span>
-              <i></i>
-              <span id="step-2" class="step-dot">02 <b>点火</b></span>
-              <i></i>
-              <span id="step-3" class="step-dot">03 <b>着火</b></span>
-            </div>
-            <p class="goal-copy">口元の煙草に火がつくまでのタイムを競います。</p>
-            <button id="replay-button" class="replay-button" type="button" hidden>もう一度プレイ</button>
-          </div>
-          <p class="restart-hint">いつでも <kbd>R</kbd> でスタート画面へ</p>
-        </div>
-      </section>
-
-      <section id="cigarette-transition-screen" class="cigarette-transition-screen" aria-label="煙草着火ステージへの移行" hidden>
-        <div class="transition-card">
-          <p class="eyebrow">STAGE 02 / CIGARETTE</p>
-          <h1>ライターに火がついた。</h1>
-          <p>次の画面で、火を煙草の先端まで運びます。近づけて風を防ぎ、Eキーを長押しして吸い込むと着火が定着します。</p>
-          <div class="transition-controls">
-            <span><kbd>WASD</kbd> ライターを動かす</span>
-            <span><kbd>矢印</kbd> 風よけを動かす</span>
-            <span><kbd>ホイール</kbd> 奥行きを調整</span>
-          </div>
-          <button id="continue-cigarette-button" class="start-button" type="button">
-            <span>煙草に火を移す</span><span class="button-arrow">↗</span>
+        <div class="start-actions">
+          <button id="start-button" class="start-button" type="button">
+            <span id="start-label">ゲームスタート</span><span class="button-arrow" aria-hidden="true">→</span>
           </button>
+          <button id="help-button" class="ghost-button help-button" type="button">遊び方</button>
+          <p class="start-note only-mouse"><kbd>Enter</kbd> でも開始</p>
         </div>
+        <p class="disclaimer">操作の不器用さを楽しむフィクションのゲームです。喫煙を勧めるものではありません。</p>
       </section>
 
-      <section id="cigarette-screen" class="game-layout cigarette-screen" aria-label="煙草に着火" hidden>
-        <div class="game-column">
-          <div class="game-heading">
-            <div>
-              <p class="eyebrow">LIGHT THE CIGARETTE</p>
-              <h1>煙草に火を移す</h1>
-              <p class="heading-copy">WASDとマウスホイールで炎を先端へ近づけ、Eキーを長押しして吸い込もう。</p>
+      <!-- ============ 遊び方 ============ -->
+      <dialog id="help" class="help" aria-labelledby="help-title">
+        <div class="help-head">
+          <h2 id="help-title">遊び方</h2>
+          <form method="dialog"><button class="help-close" type="submit" aria-label="閉じる">✕</button></form>
+        </div>
+        <div class="help-grid">
+          <section class="panel-card only-mouse" aria-labelledby="controls-title">
+            <p class="eyebrow">右手はマウス、左手はキーボード</p>
+            <h3 id="controls-title">操作方法</h3>
+            <p class="control-group">点火画面（手元にズーム）</p>
+            <ul class="control-list">
+              <li><span class="keys"><kbd>MOUSE</kbd></span><span>親指の先（マッチは頭）を動かす</span></li>
+              <li><span class="keys"><kbd>CLICK</kbd><small>長押し</small></span><span>押し付ける</span></li>
+              <li><span class="keys"><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><kbd>F</kbd></span><span>小指・薬指・中指・人差し指で握る</span></li>
+              <li><span class="keys"><kbd>SHIFT</kbd><kbd>WASD</kbd><kbd>Q</kbd><kbd>E</kbd></span><span>紙マッチだけ：左手で本体を持つ・動かす・傾ける</span></li>
+            </ul>
+            <p class="control-group">吸いつけ（一人称）</p>
+            <ul class="control-list">
+              <li><span class="keys"><kbd>MOUSE</kbd></span><span>右手（炎）を動かす</span></li>
+              <li><span class="keys"><kbd>CLICK</kbd><small>長押し</small></span><span>ライターのガスを出し続ける（離すと消える）</span></li>
+              <li><span class="keys"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span><span>左手（風よけ）を動かす</span></li>
+              <li><span class="keys"><kbd>Q</kbd><kbd>E</kbd></span><span>左手首を回して、手のひらの向きを決める</span></li>
+              <li><span class="keys"><kbd>F</kbd><small>長押し</small></span><span>左手を水平にして煙草の上にかざす（雨よけ）</span></li>
+              <li><span class="keys"><kbd>SHIFT</kbd><small>長押し</small></span><span>左手をすぼめて覆う（近すぎると熱い）</span></li>
+              <li><span class="keys"><kbd>SPACE</kbd><small>長押し</small></span><span>煙草を吸う（右クリック長押しでも可）</span></li>
+              <li><span class="keys"><kbd>Esc</kbd></span><span>一時停止（止まっている間は <kbd>Q</kbd> でタイトルへ）</span></li>
+              <li><span class="keys"><kbd>R</kbd><small>長押し</small></span><span>タイトルへ戻る</span></li>
+            </ul>
+            <p class="control-group">まったり喫煙</p>
+            <ul class="control-list">
+              <li><span class="keys"><kbd>SPACE</kbd><small>長押し</small></span><span>口元へ運んで吸う。離すと手で下ろして、吐く（クリック長押しでも可）</span></li>
+              <li><span class="keys"><kbd>F</kbd></span><span>灰皿に灰を落とす（長くなると自分で落とす）</span></li>
+            </ul>
+          </section>
+          <section class="panel-card only-touch" aria-labelledby="touch-title">
+            <p class="eyebrow">横向きで、両手の親指で</p>
+            <h3 id="touch-title">操作方法</h3>
+            <p class="control-group">点火画面（手元にズーム）</p>
+            <ul class="control-list">
+              <li><span class="keys"><kbd>握る</kbd><small>左・長押し</small></span><span>握っていないと、ずり落ちる</span></li>
+              <li><span class="keys"><kbd>右側をなぞる</kbd></span><span>触れている間は押し付ける。ライターは指を置き直すと、親指がホイールの後ろへ戻る</span></li>
+            </ul>
+            <p class="control-group">吸いつけ（一人称）</p>
+            <ul class="control-list">
+              <li><span class="keys"><kbd>右側をなぞる</kbd></span><span>炎を動かす。ライターは触れている間だけガスが出る</span></li>
+              <li><span class="keys"><kbd>スティック</kbd></span><span>左手（風よけ）を動かす。手のひらは自動で炎を向く</span></li>
+              <li><span class="keys"><kbd>すぼめる</kbd><kbd>かざす</kbd></span><span>押すたびに切り替え</span></li>
+              <li><span class="keys"><kbd>吸う</kbd><small>長押し</small></span><span>煙草を吸う</span></li>
+            </ul>
+            <p class="control-group">まったり喫煙</p>
+            <ul class="control-list">
+              <li><span class="keys"><kbd>画面を長押し</kbd></span><span>口元へ運んで吸う。離すと手で下ろして、吐く</span></li>
+            </ul>
+          </section>
+
+          <section class="panel-card" aria-labelledby="events-title">
+            <p class="eyebrow">DISTURBANCES</p>
+            <h3 id="events-title">お邪魔イベント</h3>
+            <ul class="event-list">
+              <li>
+                <span class="event-badge" data-icon="gust"></span>
+                <div><b>突風</b><span>予告された風上側へ左手を回し、手のひらを炎へ向けてすぼめる</span></div>
+              </li>
+              <li>
+                <span class="event-badge" data-icon="moth"></span>
+                <div><b>蛾</b><span>炎に寄ってくる。左手で払いのける</span></div>
+              </li>
+              <li>
+                <span class="event-badge" data-icon="sneeze"></span>
+                <div><b>くしゃみ</b><span>連打してこらえる（点火中にも起きる）</span></div>
+              </li>
+              <li>
+                <span class="event-badge" data-icon="phone"></span>
+                <div><b>スマホ通知・着信</b><span>通知は左右にスワイプ、着信は「拒否」を押す（点火中にも起きる）</span></div>
+              </li>
+              <li>
+                <span class="event-badge" data-icon="rain"></span>
+                <div><b>急な雨</b><span>左手を水平にして、煙草の先の上にかざす</span></div>
+              </li>
+              <li>
+                <span class="event-badge" data-icon="beggar"></span>
+                <div><b>一本くれよおじさん</b><span>おじさん側で左手を左右に振って追い返す</span></div>
+              </li>
+              <li>
+                <span class="event-badge" data-icon="lender"></span>
+                <div><b>ライター貸してくださいおじさん</b><span>右手へ手を伸ばしてくる。右手を遠ざけて断る</span></div>
+              </li>
+            </ul>
+            <p class="rank-note">マッチの難易度には<b>制限時間</b>があります。ライターは時間切れがない代わりに、<b>60 秒を超えるとランク F</b>。</p>
+            <p class="rank-note"><b>ストレス</b>は、失敗と時間で溜まり、MAX に近いほど手が震えます。火をつける・煙草を吸うと減ります。</p>
+          </section>
+        </div>
+      </dialog>
+
+      <!-- ============ ゲーム画面 ============ -->
+      <section id="game-layout" class="game-layout" aria-label="ゲーム画面" hidden>
+        <div class="game-hud">
+          <ol class="progress-track" aria-label="ゲーム進行">
+            <li id="step-1" class="step-dot active"><span>01</span><b>拾う</b></li>
+            <li id="step-2" class="step-dot"><span>02</span><b>火をつける</b></li>
+            <li id="step-3" class="step-dot"><span>03</span><b>吸いつける</b></li>
+          </ol>
+          <div class="hud-stats">
+            <div class="stat-card">
+              <span class="stat-label">BEST</span>
+              <strong id="best-time">--.--</strong>
             </div>
-            <div class="timer-card" aria-live="polite">
-              <span class="timer-label">TIME</span>
-              <strong id="cigarette-timer">00.00</strong>
+            <div id="timer-card" class="stat-card timer-card" aria-live="off">
+              <span class="stat-label">TIME <span id="timer-limit"></span> <b id="timer-rank" class="timer-rank"></b></span>
+              <strong id="timer">00.00</strong>
+              <span class="limit-track" aria-hidden="true"><i id="limit-bar"></i></span>
             </div>
           </div>
-          <div id="cigarette-stage-content"></div>
-          <p class="restart-hint">いつでも <kbd>R</kbd> でスタート画面へ</p>
         </div>
+
+        <div id="scene-wrap" class="scene-wrap" data-phase="ready" data-tool="lighter">
+          <div id="scene" class="scene" aria-label="Three.js のゲーム画面"></div>
+          <div class="scene-vignette" aria-hidden="true"></div>
+          <div id="scene-flash" class="scene-flash" aria-hidden="true"></div>
+          <div id="zoom-veil" class="zoom-veil" aria-hidden="true"></div>
+
+          <div class="hud-top">
+            <div class="hud-left">
+              <span id="phase-label" class="phase-pill">READY</span>
+              <span id="difficulty-chip" class="difficulty-chip">かんたん・ライター</span>
+              <span id="guard-chip" class="guard-chip">GUARD <b>—</b></span>
+              <span id="stock-chip" class="stock-chip" hidden>MATCH <b>×10</b></span>
+            </div>
+            <div id="wind-widget" class="wind-widget" aria-label="風">
+              <span class="wind-label">WIND</span>
+              <span id="wind-arrow" class="wind-arrow" aria-hidden="true">←</span>
+              <strong id="wind-speed">12</strong><span class="wind-unit">km/h</span>
+            </div>
+          </div>
+
+          <div id="event-banner" class="event-banner" role="status" hidden>
+            <span id="event-icon" class="event-icon" aria-hidden="true"></span>
+            <div class="event-body">
+              <span id="event-kicker" class="event-kicker"></span>
+              <strong id="event-title"></strong>
+              <span id="event-copy" class="event-copy"></span>
+              <span id="event-pips" class="event-pips" hidden></span>
+            </div>
+            <kbd id="event-key" class="event-key" hidden></kbd>
+            <span class="event-timer" aria-hidden="true"><i id="event-timer-bar"></i></span>
+          </div>
+
+          <ol id="ignite-steps" class="ignite-steps" aria-label="点火の手順">
+            <li><b>1</b></li>
+            <li><b>2</b></li>
+            <li><b>3</b></li>
+          </ol>
+
+          <div id="stroke-pop" class="stroke-pop" aria-live="polite"></div>
+
+          <div class="finger-panel" aria-label="握る指">
+            <span class="gauge-label">GRIP</span>
+            <div id="finger-keys" class="finger-keys">
+              <span data-finger="3"><kbd>A</kbd>小指</span>
+              <span data-finger="2"><kbd>S</kbd>薬指</span>
+              <span data-finger="1"><kbd>D</kbd>中指</span>
+              <span data-finger="0"><kbd>F</kbd>人差し指</span>
+            </div>
+            <span id="slip-warning" class="slip-warning">ずり落ちそう！ 握れ！</span>
+          </div>
+
+          <div class="book-panel" aria-label="左手の操作">
+            <span class="gauge-label">LEFT HAND</span>
+            <span><kbd>SHIFT</kbd>持つ</span>
+            <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>動かす</span>
+            <span><kbd>Q</kbd><kbd>E</kbd>傾き</span>
+          </div>
+          <div class="stress-veil" aria-hidden="true"></div>
+
+          <div class="chill-panel" aria-live="off">
+            <span class="gauge-label">CHILL</span>
+            <strong id="chill-count">0 本</strong>
+            <span id="chill-time">100% 残り</span>
+            <span class="gauge-label">ASH</span>
+            <span class="gauge-track ash-track"><i id="ash-bar"></i></span>
+          </div>
+
+          <!-- スマホ通知：画面にスマホを出し、指（マウス）でスワイプして消す -->
+          <div id="phone-ui" class="phone-ui" hidden>
+            <div class="phone-device">
+              <div id="phone-screen" class="phone-screen">
+                <div class="phone-statusbar">
+                  <span>docomo</span><span class="phone-island"></span><span>5G ▮▮▮ 82%</span>
+                </div>
+                <div id="phone-notify" class="phone-notify">
+                  <div id="phone-clock" class="phone-clock">21:47</div>
+                  <div class="phone-date">ロック画面</div>
+                  <div id="phone-stack" class="phone-stack"></div>
+                  <div class="phone-swipe-hint">← 通知を左右にスワイプして消す →</div>
+                </div>
+                <div id="phone-call" class="phone-call" hidden>
+                  <span class="call-label">着信</span>
+                  <span id="call-avatar" class="call-avatar" data-icon="beggar"></span>
+                  <strong id="call-name">上司</strong>
+                  <span id="call-status" class="call-status">着信中…</span>
+                  <div class="call-buttons">
+                    <div class="call-button call-decline" data-call="decline"><i>✕</i><span>拒否</span></div>
+                    <div class="call-button call-accept" data-call="accept"><i>✆</i><span>応答</span></div>
+                  </div>
+                  <span class="call-hint">指を乗せてクリック、または乗せたまま待つ</span>
+                </div>
+                <span class="phone-timer"><i id="phone-timer-bar"></i></span>
+                <div id="phone-finger" class="phone-finger" aria-hidden="true"></div>
+              </div>
+            </div>
+          </div>
+
+          <div id="rain-veil" class="rain-veil" aria-hidden="true"></div>
+
+          <!-- スマホの操作（触れる端末だけに出す） -->
+          <div id="touch-ui" class="touch-ui" hidden>
+            <div class="touch-stick" aria-label="左手を動かす"><i></i></div>
+            <button class="touch-grip" data-touch="grip" type="button">握る</button>
+            <div class="touch-buttons">
+              <button data-touch="inhale" type="button">吸う</button>
+              <button data-touch="cup" type="button">すぼめる</button>
+              <button data-touch="roof" type="button">かざす</button>
+              <button data-touch="ash" type="button">灰を落とす</button>
+            </div>
+            <button class="touch-pause" data-touch="pause" type="button" aria-label="一時停止">Ⅱ</button>
+          </div>
+          <div id="speech-bubble" class="speech-bubble" hidden></div>
+          <div id="toast-layer" class="toast-layer" aria-live="polite"></div>
+
+          <div id="message" class="scene-message hidden" aria-live="polite">
+            <span id="message-kicker" class="message-kicker">READY?</span>
+            <strong id="message-title">風に負けるな。</strong>
+            <span id="message-copy" class="message-copy">準備ができたら、ゲームを始めよう。</span>
+          </div>
+
+          <div id="result-card" class="result-card" data-tone="success" hidden>
+            <p class="result-kicker"><span id="result-kicker">CIGARETTE LIT</span> · <span id="result-difficulty"></span></p>
+            <div class="result-main">
+              <span id="result-rank" class="result-rank">A</span>
+              <div class="result-time-block">
+                <span class="stat-label">TIME</span>
+                <strong id="result-time">00.00</strong>
+                <span id="result-best" class="result-best" hidden>NEW BEST</span>
+              </div>
+            </div>
+            <p id="result-copy" class="result-copy"></p>
+            <p id="result-unlock" class="result-unlock" hidden>🔓 まったり喫煙モードが解放された！ タイトル画面から遊べます。</p>
+            <dl class="result-stats">
+              <div><dt>点火の挑戦</dt><dd id="res-strikes">0</dd></div>
+              <div><dt id="res-drops-label">落とした</dt><dd id="res-drops">0</dd></div>
+              <div><dt>お邪魔クリア</dt><dd id="res-events">0/0</dd></div>
+              <div><dt>失火 / むせ</dt><dd id="res-mistakes">0 / 0</dd></div>
+            </dl>
+            <div class="result-actions">
+              <button id="replay-button" class="start-button" type="button">
+                <span>もう一度</span><kbd>Enter</kbd>
+              </button>
+              <button id="title-button" class="ghost-button" type="button">
+                <span>タイトルへ</span><kbd>R</kbd>
+              </button>
+            </div>
+          </div>
+
+          <div class="hud-bottom">
+            <div class="gauges">
+              <div class="gauge gauge-ignite">
+                <span class="gauge-label">GRIP</span>
+                <span class="gauge-track grip-track"><i id="grip-bar"></i><b id="grip-need" class="gauge-need"></b></span>
+                <span id="grip-value" class="gauge-value">0%</span>
+              </div>
+              <div class="gauge gauge-ignite">
+                <span class="gauge-label">PRESS</span>
+                <span class="gauge-track"><i id="press-bar"></i><b id="press-limit" class="gauge-need gauge-limit" hidden></b></span>
+                <span id="press-value" class="gauge-value">—</span>
+              </div>
+              <div class="gauge gauge-ignite">
+                <span class="gauge-label">SPEED</span>
+                <span class="gauge-track speed-track"><em id="speed-sweet" class="gauge-sweet" hidden></em><i id="speed-bar"></i></span>
+                <span id="speed-value" class="gauge-value">—</span>
+              </div>
+              <div class="gauge gauge-ignite">
+                <span class="gauge-label">HEAT</span>
+                <span class="gauge-track heat-track"><i id="heat-bar"></i></span>
+                <span id="heat-value" class="gauge-value">0%</span>
+              </div>
+              <div id="extra-gauge" class="gauge gauge-ignite">
+                <span id="extra-label" class="gauge-label">GAS</span>
+                <span class="gauge-track extra-track"><i id="extra-bar"></i></span>
+                <span id="extra-value" class="gauge-value">—</span>
+              </div>
+              <div class="gauge gauge-stress">
+                <span class="gauge-label">STRESS</span>
+                <span class="gauge-track stress-track"><i id="stress-bar"></i></span>
+                <span id="stress-value" class="gauge-value">平常</span>
+              </div>
+              <div class="gauge gauge-fuel">
+                <span class="gauge-label">FUEL</span>
+                <span class="gauge-track fuel-track"><i id="fuel-bar"></i></span>
+                <span id="fuel-value" class="gauge-value">—</span>
+              </div>
+              <div class="gauge gauge-flame">
+                <span class="gauge-label">FLAME</span>
+                <span class="gauge-track"><i id="flame-bar"></i></span>
+                <span id="flame-value" class="gauge-value">—</span>
+              </div>
+              <div class="gauge gauge-match">
+                <span class="gauge-label">MATCH</span>
+                <span class="gauge-track"><i id="match-bar"></i></span>
+                <span id="match-value" class="gauge-value">100%</span>
+              </div>
+              <div class="gauge gauge-burn">
+                <span class="gauge-label">BURN</span>
+                <span class="gauge-track"><i id="burn-bar"></i></span>
+                <span id="burn-value" class="gauge-value">0%</span>
+              </div>
+              <div class="gauge gauge-lung">
+                <span class="gauge-label">LUNG</span>
+                <span class="gauge-track lung-track"><i id="lung-bar"></i></span>
+                <span id="lung-value" class="gauge-value">余裕</span>
+              </div>
+            </div>
+            <div id="key-hints" class="key-hints"></div>
+          </div>
+        </div>
+        <div class="rotate-hint"><b aria-hidden="true">📱</b><span>横向きにして遊んでください</span></div>
+        <p id="restart-hint" class="restart-hint"><kbd>R</kbd> 長押しでタイトルへ戻れます</p>
       </section>
 
       <footer class="footer">
@@ -149,6 +394,6 @@
         <span>TAKE A BREATH. TAKE YOUR TIME.</span>
       </footer>
     </main>
-    <script type="module" src="/src/main.js"></script>
+    <script type="module" src="./src/main.js"></script>
   </body>
 </html>
